@@ -1,8 +1,6 @@
 package com.algolytics.test.api;
 
 import com.algolytics.test.Application;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,16 +16,16 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
 @RunWith(SpringRunner.class)
 @SpringBootTest(classes = Application.class)
 @AutoConfigureMockMvc
-public class HTTPCodesMockMvcTest {
+public class HTTPCodesMockMvcTest extends HTTPBaseTest{
 
     @Autowired
-    protected MockMvc mockMvc;
+    private MockMvc mockMvc;
 
     @Test
     public void testMockMvcOk() throws Exception {
         MyRequest request = new MyRequest();
         MyResponse response = new MyResponse();
-        mockMvc.perform(MockMvcRequestBuilders.post("/api/encoding")
+        mockMvc.perform(MockMvcRequestBuilders.post(MyRequestMapping.ENCODING_METHOD)
                 .content(json(request))
                 .contentType(MediaType.APPLICATION_JSON_UTF8))
                 .andExpect(MockMvcResultMatchers.status().isOk())
@@ -38,17 +36,24 @@ public class HTTPCodesMockMvcTest {
     }
 
     @Test
+    public void testMockMvcError() throws Exception {
+        MyRequest request = new MyRequest();
+        mockMvc.perform(MockMvcRequestBuilders.post(MyRequestMapping.ERROR_METHOD)
+                .content(json(request))
+                .contentType(MediaType.APPLICATION_JSON_UTF8))
+                .andExpect(MockMvcResultMatchers.status().isBadRequest())
+                .andExpect(MockMvcResultMatchers.jsonPath("$.status").value(HttpStatus.BAD_REQUEST.value()))
+                .andExpect(MockMvcResultMatchers.content().contentType(MediaType.APPLICATION_JSON_UTF8));
+    }
+
+    @Test
     public void testMockMvcFailsOnUnsupportedMediaType() throws Exception {
         MyRequest request = new MyRequest();
-        mockMvc.perform(MockMvcRequestBuilders.post("/api/encoding")
+        mockMvc.perform(MockMvcRequestBuilders.post(MyRequestMapping.ENCODING_METHOD)
                 .content(json(request))
                 .contentType(MediaType.TEXT_PLAIN))
                 .andExpect(MockMvcResultMatchers.status().isUnsupportedMediaType())
                 .andExpect(MockMvcResultMatchers.jsonPath("$.status").value(HttpStatus.UNSUPPORTED_MEDIA_TYPE.value()))
                 .andExpect(MockMvcResultMatchers.content().contentType(MediaType.APPLICATION_JSON_UTF8));
-    }
-
-    private String json(Object o) throws JsonProcessingException {
-        return new ObjectMapper().writeValueAsString(o);
     }
 }

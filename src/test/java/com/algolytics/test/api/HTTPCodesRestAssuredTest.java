@@ -1,8 +1,6 @@
 package com.algolytics.test.api;
 
 import com.algolytics.test.Application;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import io.restassured.RestAssured;
 import io.restassured.builder.RequestSpecBuilder;
 import io.restassured.http.ContentType;
@@ -13,6 +11,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.web.server.LocalServerPort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.junit4.SpringRunner;
@@ -21,7 +20,10 @@ import java.nio.charset.StandardCharsets;
 
 @RunWith(SpringRunner.class)
 @SpringBootTest(classes = Application.class, webEnvironment = SpringBootTest.WebEnvironment.DEFINED_PORT)
-public class HTTPCodesMockRestassuredTest {
+public class HTTPCodesRestAssuredTest extends HTTPBaseTest{
+
+    @LocalServerPort
+    int serverPort;
 
     private RequestSpecification spec;
 
@@ -31,13 +33,13 @@ public class HTTPCodesMockRestassuredTest {
     }
 
     @Test
-    public void testRestassuredOk() throws Exception {
+    public void testRestAssuredOk() throws Exception {
         MyResponse myResponse = new MyResponse();
         ResponseOptions response = RestAssured.given(spec)
-                .port(8080)
+                .port(serverPort)
                 .contentType(ContentType.JSON.withCharset(StandardCharsets.UTF_8))
                 .body(new MyRequest())
-                .post("/api/encoding");
+                .post(MyRequestMapping.ENCODING_METHOD);
         Assert.assertEquals(HttpStatus.OK.value(), response.getStatusCode());
         Assert.assertTrue(response.getContentType().equals(MediaType.APPLICATION_JSON_UTF8_VALUE));
         Assert.assertEquals(myResponse.getFieldEn(), response.getBody().jsonPath().get("fieldEn"));
@@ -45,19 +47,28 @@ public class HTTPCodesMockRestassuredTest {
     }
 
     @Test
-    public void testRestassuredFailsOnUnsupportedMediaType() throws Exception {
+    public void testRestAssuredError() throws Exception {
         ResponseOptions response = RestAssured.given(spec)
-                .port(8080)
-                .contentType(ContentType.TEXT.withCharset(StandardCharsets.UTF_8))
+                .port(serverPort)
+                .contentType(ContentType.JSON.withCharset(StandardCharsets.UTF_8))
                 .body(json(new MyRequest()))
-                .post("/api/encoding");
-        Assert.assertEquals(HttpStatus.UNSUPPORTED_MEDIA_TYPE.value(), response.getStatusCode());
+                .post(MyRequestMapping.ERROR_METHOD);
+        Assert.assertEquals(HttpStatus.BAD_REQUEST.value(), response.getStatusCode());
         Assert.assertTrue(response.getContentType().equals(MediaType.APPLICATION_JSON_UTF8_VALUE));
-        Assert.assertEquals(new Integer(HttpStatus.UNSUPPORTED_MEDIA_TYPE.value()),
+        Assert.assertEquals(Integer.valueOf(HttpStatus.BAD_REQUEST.value()),
                 response.getBody().jsonPath().get("status"));
     }
 
-    private String json(Object o) throws JsonProcessingException {
-        return new ObjectMapper().writeValueAsString(o);
+    @Test
+    public void testRestAssuredFailsOnUnsupportedMediaType() throws Exception {
+        ResponseOptions response = RestAssured.given(spec)
+                .port(serverPort)
+                .contentType(ContentType.TEXT.withCharset(StandardCharsets.UTF_8))
+                .body(json(new MyRequest()))
+                .post(MyRequestMapping.ENCODING_METHOD);
+        Assert.assertEquals(HttpStatus.UNSUPPORTED_MEDIA_TYPE.value(), response.getStatusCode());
+        Assert.assertTrue(response.getContentType().equals(MediaType.APPLICATION_JSON_UTF8_VALUE));
+        Assert.assertEquals(Integer.valueOf(HttpStatus.UNSUPPORTED_MEDIA_TYPE.value()),
+                response.getBody().jsonPath().get("status"));
     }
 }
